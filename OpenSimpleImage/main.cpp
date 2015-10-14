@@ -130,7 +130,7 @@ void display()
 	//rotateCamera();
 
 	cout << "DepthBuffer: " << DepthBuffer << endl;
-
+	cout << endl;
 	glMatrixMode(GL_MODELVIEW);
 
 	if (DepthBuffer != NULL)
