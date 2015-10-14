@@ -17,9 +17,10 @@ GLuint window, sub;
 KinectHandler* kinect = new KinectHandler();
 RGBQUAD* ColorData = NULL;
 RGBQUAD* DepthGrayScaleData = NULL;
-//PointCloud* cloud = NULL;
 UINT16* DepthBuffer = NULL;
 GLuint textureColor, textureDepth;
+
+int one = 1;
 
 int t = 0;
 
@@ -60,7 +61,8 @@ void main(int argc, char** argv)
 	//glLoadIdentity();
 	//glOrtho(0, 1.0, 0, 1.0, 0, 1.0); //Defines the space in which the polygons are created
 	//gluPerspective((float)60, screen_width / (GLdouble)screen_height, 0.1, 1000);
-	gluLookAt(0, 0, -2, 0, 0, 0, 0, 1, 0);
+	//gluLookAt(0, 0, -2, 0, 0, 0, 0, 1, 0);
+	
 	glMatrixMode(GL_TEXTURE); // The next three lines invert the texture for visualization purposes, othewise it will be upside-down.
 	glLoadIdentity();
 	glScalef(1.0f, -1.0f, 1.0f);
@@ -80,19 +82,18 @@ void rotateCamera() {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	gluLookAt(x, 0, z, 0, 0, radius / 2, 0, 1, 0);
-	angle += 0.005;
+	angle -= 0.05;
 }
 
 void display()
 {
-
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	glOrtho(0, 1.0, 0, 1.0, 0, 1.0);	
 
-	cout << "Display function" << endl;
+	/*if (ColorData && DepthGrayScaleData && DepthBuffer)*/	one = 0;
 
-	kinect->GetColorAndDepth(ColorData, DepthGrayScaleData, DepthBuffer);
+	/*if (one)*/ kinect->GetColorAndDepth(ColorData, DepthGrayScaleData , DepthBuffer);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_MODELVIEW);
@@ -127,23 +128,23 @@ void display()
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective((float)60, screen_width/(GLdouble)screen_height, 0.001, 1000);
-	//rotateCamera();
+	rotateCamera();
 
-	cout << "DepthBuffer: " << DepthBuffer << endl;
-	cout << endl;
 	glMatrixMode(GL_MODELVIEW);
 
 	if (DepthBuffer != NULL)
 	{
+		cout << "======================NEW FRAME===============================" << endl;
+		//cout << "DepthBuffer: " << DepthBuffer << endl;
 		for (int i = 0; i < depth_height; i++)
 		{
 			for (int j = 0; j < depth_width; j++)
 			{
 
 				DepthSpacePoint depthSpacePoint = { static_cast<float>(j), static_cast<float>(i) };
-				cout << "depth: " << i << " " << j << endl;
+				//cout << "DepthSpacePoint: " << depthSpacePoint.X << " " << depthSpacePoint.Y << endl;
 				UINT16 depth = DepthBuffer[i * depth_width + j];
-
+				//cout << "Depth: " << depth << endl;
 				ColorSpacePoint colorSpacePoint = { 0.0f, 0.0f };
 				kinect->m_pCoordinateMapper->MapDepthPointToColorSpace(depthSpacePoint, depth, &colorSpacePoint);
 				int colorX = static_cast<int>(std::floor(colorSpacePoint.X + 0.5f));
@@ -151,6 +152,7 @@ void display()
 
 				if ((0 <= colorX) && (colorX < color_width) && (0 <= colorY) && (colorY < color_height)){
 					RGBQUAD color = ColorData[colorY * color_width + colorX];
+					//cout << "R" << (int) color.rgbRed << " G" << (int)color.rgbGreen << " B" << (int)color.rgbBlue;
 					glColor3b(color.rgbRed, color.rgbGreen, color.rgbBlue);
 				}
 				else
@@ -162,11 +164,12 @@ void display()
 				kinect->m_pCoordinateMapper->MapDepthPointToCameraSpace(depthSpacePoint, depth, &cameraSpacePoint);
 
 				if ((0 <= colorX) && (colorX < color_width) && (0 <= colorY) && (colorY < color_height)){
-					glBegin(GL_POINT);
-					glVertex3f(cameraSpacePoint.X, cameraSpacePoint.Y, cameraSpacePoint.Z);
+					glBegin(GL_POINTS);
+						glVertex3f(cameraSpacePoint.X*4, cameraSpacePoint.Y*4, cameraSpacePoint.Z*4 + 5);
+						
+						//cout << " X:" << cameraSpacePoint.X << " Y:" << cameraSpacePoint.Y << " Z:" << -cameraSpacePoint.Z << endl;
 					glEnd();
 				}
-			
 			}
 		}
 	}

@@ -31,6 +31,7 @@ public:
 	HRESULT GetColorData(RGBQUAD*& dest);
 	HRESULT GetDepthImageData(RGBQUAD*&  dest);
 	HRESULT GetColorAndDepth(RGBQUAD*&  color, RGBQUAD*& depth, UINT16*& depthBuffer);
+	HRESULT GetColorAndDepth(RGBQUAD*&  color, RGBQUAD*& depth);
 
 private:
 	// Current Kinect
@@ -43,7 +44,7 @@ private:
 
 	RGBQUAD*					m_pColorRGBX;
 	RGBQUAD*					m_pDepthRGBX;
-	PointCloud*					m_pPointCloud;
+	UINT16*						m_pDepthRawBuffer;
 	
 
 	// Safe release for interfaces

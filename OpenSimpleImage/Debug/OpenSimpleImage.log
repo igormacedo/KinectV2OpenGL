@@ -1,10 +1,8 @@
-﻿Build started 14/10/2015 11:00:58.
+﻿Build started 14/10/2015 16:09:05.
      1>Project "C:\Users\Pesquisador\Documents\Visual Studio 2013\Projects\OpenSimpleImage\OpenSimpleImage\OpenSimpleImage.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt KinectHandler.cpp main.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt main.cpp
          main.cpp
-         KinectHandler.cpp
-         Generating Code...
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Pesquisador\Documents\Visual Studio 2013\Projects\OpenSimpleImage\Debug\OpenSimpleImage.exe" /INCREMENTAL /NOLOGO /LIBPATH:Dependencies\freeglut /LIBPATH:Dependencies\glew opengl32.lib freeglut.lib glew32.lib kinect20.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Pesquisador\Documents\Visual Studio 2013\Projects\OpenSimpleImage\Debug\OpenSimpleImage.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Pesquisador\Documents\Visual Studio 2013\Projects\OpenSimpleImage\Debug\OpenSimpleImage.lib" /MACHINE:X86 Debug\KinectHandler.obj
          Debug\main.obj
@@ -13,4 +11,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:02.75
+Time Elapsed 00:00:01.79

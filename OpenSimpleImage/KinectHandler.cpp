@@ -14,7 +14,7 @@ KinectHandler::KinectHandler():
 	// create heap storage for color pixel data in RGBX format
 	m_pColorRGBX = new RGBQUAD[cColorWidth * cColorHeight];
 	m_pDepthRGBX = new RGBQUAD[cDepthWidth * cDepthHeight];
-	m_pPointCloud = new PointCloud[cDepthWidth * cDepthHeight];
+	m_pDepthRawBuffer = new UINT16[cDepthWidth * cDepthHeight];
 }
 
 KinectHandler::~KinectHandler()
@@ -293,7 +293,7 @@ HRESULT KinectHandler::GetDepthImageData(RGBQUAD* &dest)
 	return hr;
 }
 
-HRESULT KinectHandler::GetColorAndDepth(RGBQUAD*& color, RGBQUAD*& depth, UINT16*& depthBuffer)
+HRESULT KinectHandler::GetColorAndDepth(RGBQUAD* &color, RGBQUAD* &depth)
 {
 	if (!m_pMultiFrameReader)
 	{
@@ -303,10 +303,6 @@ HRESULT KinectHandler::GetColorAndDepth(RGBQUAD*& color, RGBQUAD*& depth, UINT16
 
 	IColorFrame* pColorFrame = NULL;
 	IDepthFrame* pDepthFrame = NULL;
-
-	RGBQUAD *pColorBuffer = NULL;
-	UINT16 *pDepthBuffer = NULL;
-
 	IMultiSourceFrame* pMultiSourceFrame = NULL;
 	HRESULT hr = m_pMultiFrameReader->AcquireLatestFrame(&pMultiSourceFrame);
 
@@ -328,11 +324,11 @@ HRESULT KinectHandler::GetColorAndDepth(RGBQUAD*& color, RGBQUAD*& depth, UINT16
 			hr = pDepthFrameReference->AcquireFrame(&pDepthFrame);
 		}
 
-		SafeRelease(pDepthFrameReference);
 		SafeRelease(pColorFrameReference);
+		SafeRelease(pDepthFrameReference);
 	}
 
-	if (SUCCEEDED(hr))
+	if (SUCCEEDED(hr) && pColorFrame != NULL && pDepthFrame != NULL)
 	{
 		INT64 nTime = 0;
 		IFrameDescription* pColorFrameDescription = NULL;
@@ -340,7 +336,7 @@ HRESULT KinectHandler::GetColorAndDepth(RGBQUAD*& color, RGBQUAD*& depth, UINT16
 		int nColorHeight = 0;
 		ColorImageFormat imageFormat = ColorImageFormat_None;
 		UINT nColorBufferSize = 0;
-
+		RGBQUAD *pColorBuffer = NULL;
 
 		hr = pColorFrame->get_RelativeTime(&nTime);
 
@@ -374,6 +370,7 @@ HRESULT KinectHandler::GetColorAndDepth(RGBQUAD*& color, RGBQUAD*& depth, UINT16
 			}
 			else
 			{
+				cout << "FAILED" << endl;
 				hr = E_FAIL;
 			}
 		}
@@ -383,9 +380,10 @@ HRESULT KinectHandler::GetColorAndDepth(RGBQUAD*& color, RGBQUAD*& depth, UINT16
 			color = pColorBuffer;
 		}
 
-		
 
-		///////=============  Depth Data ==============//////////////
+		///===========================================////
+
+
 		nTime = 0;
 		IFrameDescription* pDepthFrameDescription = NULL;
 		int nDepthWidth = 0;
@@ -393,7 +391,7 @@ HRESULT KinectHandler::GetColorAndDepth(RGBQUAD*& color, RGBQUAD*& depth, UINT16
 		USHORT nDepthMinReliableDistance = 0;
 		USHORT nDepthMaxDistance = 0;
 		UINT nDepthBufferSize = 0;
-
+		UINT16 *pDepthBuffer = NULL;
 
 		hr = pDepthFrame->get_RelativeTime(&nTime);
 
@@ -426,25 +424,34 @@ HRESULT KinectHandler::GetColorAndDepth(RGBQUAD*& color, RGBQUAD*& depth, UINT16
 		if (SUCCEEDED(hr))
 		{
 			hr = pDepthFrame->AccessUnderlyingBuffer(&nDepthBufferSize, &pDepthBuffer);
-			//hr = pDepthFrame->CopyFrameDataToArray(sizeof(UINT16)*cDepthWidth * cDepthHeight, m_pDepthBuffer);
 		}
-
 		if (SUCCEEDED(hr))
 		{
+			//RGBQUAD* pRGBX = new RGBQUAD[cDepthWidth * cDepthHeight];
+
+
+			// end pixel is start + width*height - 1
 
 			const UINT16* pBufferEnd = pDepthBuffer + (nDepthWidth * nDepthHeight);
 			RGBQUAD* auxiliar = m_pDepthRGBX;
-			UINT16* auxiliarBuffer = pDepthBuffer;
-			UINT16* frameArray = new UINT16[nDepthWidth * nDepthHeight];
+			//const UINT16* pBufferEnd = pDepthBuffer + (640 * 480);
 			int counter = 0;
 
-			while (auxiliarBuffer < pBufferEnd)
+			while (pDepthBuffer < pBufferEnd)
 			{
-				USHORT depth = *auxiliarBuffer;
-				*frameArray = depth;
+				//cout << "now:" << pDepthBuffer << " end:" << pBufferEnd << endl;
+				USHORT depth = *pDepthBuffer;
+				//cout << "now:" << pDepthBuffer << " end:" << pBufferEnd << endl;
 
-				BYTE intensity = static_cast<BYTE>((depth >= nDepthMinReliableDistance) && (depth <= nDepthMaxDistance) ? ((depth - nDepthMinReliableDistance) * (0 - 255) / (nDepthMaxDistance/30 - nDepthMinReliableDistance) + 255) : 0);
-				//BYTE intensity = static_cast<BYTE>((depth - nDepthMinReliableDistance) * (255 - 0) / (nDepthMaxDistance - nDepthMinReliableDistance) + 0);
+				// To convert to a byte, we're discarding the most-significant
+				// rather than least-significant bits.
+				// We're preserving detail, although the intensity will "wrap."
+				// Values outside the reliable depth range are mapped to 0 (black).
+
+				// Note: Using conditionals in this loop could degrade performance.
+				// Consider using a lookup table instead when writing production code.
+				//BYTE intensity = static_cast<BYTE>((depth >= nDepthMinReliableDistance) && (depth <= nDepthMaxDistance) ? (depth % 256) : 0);
+				BYTE intensity = static_cast<BYTE>((depth >= nDepthMinReliableDistance) && (depth <= nDepthMaxDistance) ? ((depth - nDepthMinReliableDistance) * (0 - 255) / (nDepthMaxDistance/80 - nDepthMinReliableDistance) + 255) : 0);
 				auxiliar->rgbBlue = intensity;
 				auxiliar->rgbGreen = intensity;
 				auxiliar->rgbRed = intensity;
@@ -453,27 +460,219 @@ HRESULT KinectHandler::GetColorAndDepth(RGBQUAD*& color, RGBQUAD*& depth, UINT16
 				counter++;
 
 				++auxiliar;
-				++auxiliarBuffer;
-				++frameArray;
+				++pDepthBuffer;
 			}
 
 			depth = m_pDepthRGBX;
-			//depthBuffer = pDepthBuffer;
-			depthBuffer = frameArray; 
-			cout << "DepthBufferMethod: " << pDepthBuffer << endl;
-			cout << "end: " << auxiliarBuffer << endl;
 		}
 
 		SafeRelease(pDepthFrameDescription);
-		SafeRelease(pColorFrameDescription);
+
 	}
 	else
 	{
+		cout << "Acquire last frame FAILED " << endl;
 		hr = E_FAIL;
+		SafeRelease(pColorFrame);
 		SafeRelease(pDepthFrame);
 		return hr;
 	}
 
+	SafeRelease(pColorFrame);
+	SafeRelease(pDepthFrame);
+	SafeRelease(pMultiSourceFrame);
+	return hr;
+}
+
+HRESULT KinectHandler::GetColorAndDepth(RGBQUAD* &color, RGBQUAD* &depth, UINT16*& depthBuffer)
+{
+	if (!m_pMultiFrameReader)
+	{
+		cout << "No frame reader!" << endl;
+		return E_FAIL;
+	}
+
+	IColorFrame* pColorFrame = NULL;
+	IDepthFrame* pDepthFrame = NULL;
+	IMultiSourceFrame* pMultiSourceFrame = NULL;
+	HRESULT hr = m_pMultiFrameReader->AcquireLatestFrame(&pMultiSourceFrame);
+
+	if (SUCCEEDED(hr))
+	{
+		IColorFrameReference* pColorFrameReference = NULL;
+		hr = pMultiSourceFrame->get_ColorFrameReference(&pColorFrameReference);
+
+		if (SUCCEEDED(hr))
+		{
+			hr = pColorFrameReference->AcquireFrame(&pColorFrame);
+		}
+
+		IDepthFrameReference* pDepthFrameReference = NULL;
+		hr = pMultiSourceFrame->get_DepthFrameReference(&pDepthFrameReference);
+
+		if (SUCCEEDED(hr))
+		{
+			hr = pDepthFrameReference->AcquireFrame(&pDepthFrame);
+		}
+
+		SafeRelease(pColorFrameReference);
+		SafeRelease(pDepthFrameReference);
+	}
+
+	if (SUCCEEDED(hr) && pColorFrame != NULL && pDepthFrame != NULL)
+	{
+		INT64 nTime = 0;
+		IFrameDescription* pColorFrameDescription = NULL;
+		int nColorWidth = 0;
+		int nColorHeight = 0;
+		ColorImageFormat imageFormat = ColorImageFormat_None;
+		UINT nColorBufferSize = 0;
+		RGBQUAD *pColorBuffer = NULL;
+
+		hr = pColorFrame->get_RelativeTime(&nTime);
+
+		if (SUCCEEDED(hr))
+		{
+			hr = pColorFrame->get_FrameDescription(&pColorFrameDescription);
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = pColorFrameDescription->get_Width(&nColorWidth);
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = pColorFrameDescription->get_Height(&nColorHeight);
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = pColorFrame->get_RawColorImageFormat(&imageFormat);
+		}
+		if (SUCCEEDED(hr))
+		{
+			if (imageFormat == ColorImageFormat_Bgra)
+			{
+				hr = pColorFrame->AccessRawUnderlyingBuffer(&nColorBufferSize, reinterpret_cast<BYTE**>(&pColorBuffer));
+			}
+			else if (m_pColorRGBX)
+			{
+				pColorBuffer = m_pColorRGBX;
+				nColorBufferSize = cColorWidth * cColorHeight * sizeof(RGBQUAD);
+				hr = pColorFrame->CopyConvertedFrameDataToArray(nColorBufferSize, reinterpret_cast<BYTE*>(pColorBuffer), ColorImageFormat_Bgra);
+			}
+			else
+			{
+				cout << "FAILED" << endl;
+				hr = E_FAIL;
+			}
+		}
+
+		if (SUCCEEDED(hr))
+		{
+			color = pColorBuffer;
+		}
+
+
+		///===========================================////
+
+
+		nTime = 0;
+		IFrameDescription* pDepthFrameDescription = NULL;
+		int nDepthWidth = 0;
+		int nDepthHeight = 0;
+		USHORT nDepthMinReliableDistance = 0;
+		USHORT nDepthMaxDistance = 0;
+		UINT nDepthBufferSize = 0;
+		UINT16 *pDepthBuffer = NULL;
+
+		hr = pDepthFrame->get_RelativeTime(&nTime);
+
+		if (SUCCEEDED(hr))
+		{
+			hr = pDepthFrame->get_FrameDescription(&pDepthFrameDescription);
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = pDepthFrameDescription->get_Width(&nDepthWidth);
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = pDepthFrameDescription->get_Height(&nDepthHeight);
+		}
+		if (SUCCEEDED(hr))
+		{
+			hr = pDepthFrame->get_DepthMinReliableDistance(&nDepthMinReliableDistance);
+		}
+		if (SUCCEEDED(hr))
+		{
+			// In order to see the full range of depth (including the less reliable far field depth)
+			// we are setting nDepthMaxDistance to the extreme potential depth threshold
+			nDepthMaxDistance = USHRT_MAX;
+
+			// Note:  If you wish to filter by reliable depth distance, uncomment the following line.
+			//// hr = pDepthFrame->get_DepthMaxReliableDistance(&nDepthMaxDistance);
+		}
+
+		if (SUCCEEDED(hr))
+		{
+			hr = pDepthFrame->AccessUnderlyingBuffer(&nDepthBufferSize, &pDepthBuffer);
+		}
+		if (SUCCEEDED(hr))
+		{
+			//RGBQUAD* pRGBX = new RGBQUAD[cDepthWidth * cDepthHeight];
+
+
+			// end pixel is start + width*height - 1
+
+			const UINT16* pBufferEnd = pDepthBuffer + (nDepthWidth * nDepthHeight);
+			RGBQUAD* auxiliar = m_pDepthRGBX;
+			//const UINT16* pBufferEnd = pDepthBuffer + (640 * 480);
+			int counter = 0;
+
+			while (pDepthBuffer < pBufferEnd)
+			{
+				//cout << "now:" << pDepthBuffer << " end:" << pBufferEnd << endl;
+				USHORT depth = *pDepthBuffer;
+				//cout << "now:" << pDepthBuffer << " end:" << pBufferEnd << endl;
+
+				// To convert to a byte, we're discarding the most-significant
+				// rather than least-significant bits.
+				// We're preserving detail, although the intensity will "wrap."
+				// Values outside the reliable depth range are mapped to 0 (black).
+
+				// Note: Using conditionals in this loop could degrade performance.
+				// Consider using a lookup table instead when writing production code.
+				BYTE intensity = static_cast<BYTE>((depth >= nDepthMinReliableDistance) && (depth <= nDepthMaxDistance) ? (depth % 256) : 0);
+				auxiliar->rgbBlue = intensity;
+				auxiliar->rgbGreen = intensity;
+				auxiliar->rgbRed = intensity;
+				auxiliar->rgbReserved = (BYTE)255;
+
+				counter++;
+
+				++auxiliar;
+				++pDepthBuffer;
+			}
+
+			depth = m_pDepthRGBX;
+		}
+
+		if (m_pDepthRawBuffer)
+		{
+			hr = pDepthFrame->CopyFrameDataToArray((cDepthWidth * cDepthHeight), m_pDepthRawBuffer);
+			if(SUCCEEDED(hr)) depthBuffer = m_pDepthRawBuffer;
+		}
+
+		SafeRelease(pDepthFrameDescription);
+
+	}
+	else
+	{
+		cout << "Acquire last frame FAILED " << endl;
+		hr = E_FAIL;
+		SafeRelease(pColorFrame);
+		SafeRelease(pDepthFrame);
+		return hr;
+	}
 
 	SafeRelease(pColorFrame);
 	SafeRelease(pDepthFrame);
