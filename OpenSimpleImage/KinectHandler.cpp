@@ -641,7 +641,8 @@ HRESULT KinectHandler::GetColorAndDepth(RGBQUAD* &color, RGBQUAD* &depth, UINT16
 
 				// Note: Using conditionals in this loop could degrade performance.
 				// Consider using a lookup table instead when writing production code.
-				BYTE intensity = static_cast<BYTE>((depth >= nDepthMinReliableDistance) && (depth <= nDepthMaxDistance) ? (depth % 256) : 0);
+				//BYTE intensity = static_cast<BYTE>((depth >= nDepthMinReliableDistance) && (depth <= nDepthMaxDistance) ? (depth % 256) : 0);
+				BYTE intensity = static_cast<BYTE>((depth >= nDepthMinReliableDistance) && (depth <= nDepthMaxDistance) ? ((depth - nDepthMinReliableDistance) * (0 - 255) / (nDepthMaxDistance / 50 - nDepthMinReliableDistance) + 255) : 0);
 				auxiliar->rgbBlue = intensity;
 				auxiliar->rgbGreen = intensity;
 				auxiliar->rgbRed = intensity;
