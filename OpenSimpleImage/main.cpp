@@ -25,6 +25,7 @@ int one = 1;
 int t = 0;
 
 void display();
+void DrawPointCloud(GLfloat*,GLubyte*,int);
 
 void main(int argc, char** argv)
 {
@@ -78,24 +79,28 @@ void main(int argc, char** argv)
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glShadeModel(GL_SMOOTH);
-
-	GLfloat mat_amb_difuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	GLfloat mat_shininess[] = { 0.0f };
-	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
-	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, mat_amb_difuse);
-	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
 
 	GLfloat light_ambient_diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	GLfloat light_position[] = { -0.3f, 0.0f, -1.5f, 0.0f };
-	//glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+	GLfloat light_specular[] = { 0.0, 0.0f, 0.0f, 1.0f };
+	GLfloat light_position[] = { 0.0f, 0.0f, 100.0f, 1.0f };
 	glLightfv(GL_LIGHT0, GL_AMBIENT_AND_DIFFUSE, light_ambient_diffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
 
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
 
-	//glEnable(GL_COLOR_MATERIAL);
+	glShadeModel(GL_SMOOTH);
+
+	/*GLfloat mat_amb_difuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	GLfloat mat_shininess[] = { 0.0f };
+	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, mat_amb_difuse);
+	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);*/
+
+	glEnable(GL_COLOR_MATERIAL);
+	glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
 
 	kinect->KinectInit();
 	glutMainLoop();
@@ -103,12 +108,12 @@ void main(int argc, char** argv)
 
 void rotateCamera() {
 	static double angle = 0.;
-	static double radius = 2.;
+	static double radius = 1;
 	double x = radius*sin(angle);
 	double z = radius*(1 - cos(angle)) - radius / 2;
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(x, 0, z, 0, 0, radius, 0, 1, 0);
+	gluLookAt(x, 0, z, 0, 0, 0, 0, 1, 0);
 	cout << "Look at " << x << ' ' << 0 << ' ' << z << endl;
 	angle -= 0.05;
 }
@@ -120,8 +125,8 @@ void display()
 	glLoadIdentity();
 	glOrtho(0, 1.0, 0, 1.0, 0, 1.0);	
 
-	GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+	//GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	//glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
 
 	/*if (ColorData && DepthGrayScaleData && DepthBuffer)*/	one = 0;
 
@@ -130,7 +135,7 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_MODELVIEW);
 
-
+	/*
 	glBindTexture(GL_TEXTURE_2D, textureColor);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -156,20 +161,22 @@ void display()
 		glTexCoord2f(1.0f, 0.0f);	glVertex2f(1.0f, 0.75);
 		glTexCoord2f(1.0f, 1.0f);	glVertex2f(1.0f, 1.0f);
 		glTexCoord2f(0.0f, 1.0f);	glVertex2f(0.75f, 1.0f);	
-	glEnd();
+	glEnd();*/
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective((float)60, screen_width/(GLdouble)screen_height, 0.001, 1000);
-	gluLookAt(-0.3, 0, -1, 0, 0, 2, 0, 1, 0);
+	gluLookAt(-0.3, 0, -1, 0, 0, 0, 0, 1, 0);
 	//rotateCamera();
 
+	GLfloat* position = new GLfloat[depth_height*depth_width*3];
+	GLubyte* color = new GLubyte[depth_height*depth_width*3];
 
 	glPointSize(1);
 	if (DepthBuffer != NULL)
 	{
-		glDisable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, 0);
+		//glDisable(GL_TEXTURE_2D);
+		//glBindTexture(GL_TEXTURE_2D, 0);
 		cout << "======================NEW FRAME===============================" << endl;
 		for (int i = 0; i < depth_height; i++)
 		{
@@ -184,15 +191,21 @@ void display()
 				int colorY = static_cast<int>(std::floor(colorSpacePoint.Y + 0.5f));
 
 				if ((0 <= colorX) && (colorX < color_width) && (0 <= colorY) && (colorY < color_height)){
-					RGBQUAD color = ColorData[colorY * color_width + colorX];
+					RGBQUAD colorRGB = ColorData[colorY * color_width + colorX];
+					color[(i * depth_width + j) * 3] = colorRGB.rgbRed;
+					color[(i * depth_width + j) * 3 + 1] = colorRGB.rgbGreen;
+					color[(i * depth_width + j) * 3 + 2] = colorRGB.rgbBlue;
 					//cout << "R" << (int) color.rgbRed << " G" << (int)color.rgbGreen << " B" << (int)color.rgbBlue;
 					//glColor3i((int)color.rgbRed, (int)color.rgbGreen, (int)color.rgbBlue);
 
 					CameraSpacePoint cameraSpacePoint = { 0.0f, 0.0f, 0.0f };
 					kinect->m_pCoordinateMapper->MapDepthPointToCameraSpace(depthSpacePoint, depth, &cameraSpacePoint);
-					glBegin(GL_POINTS);
-						glVertex3f(cameraSpacePoint.X * 5, cameraSpacePoint.Y * 5 -3, cameraSpacePoint.Z * 5 + 5);
-					glEnd();
+					position[(i * depth_width + j) * 3] = cameraSpacePoint.X;
+					position[(i * depth_width + j) * 3 + 1] = cameraSpacePoint.Y;
+					position[(i * depth_width + j) * 3 + 2] = cameraSpacePoint.Z;
+					//glBegin(GL_POINTS);
+						//glVertex3f(cameraSpacePoint.X * 5, cameraSpacePoint.Y * 5 -3, cameraSpacePoint.Z * 5 + 5);
+					//glEnd();
 				}
 
 				//CameraSpacePoint cameraSpacePoint = { 0.0f, 0.0f, 0.0f };
@@ -212,13 +225,32 @@ void display()
 		}
 	}
 
-	glMatrixMode(GL_MODELVIEW);
-	glPointSize(10);
-	
-	glBegin(GL_POINTS);
-		glColor3i(255, 0, 0);
-		glVertex3f(0, 0, 0);
-	glEnd();
+	//glMatrixMode(GL_MODELVIEW);
+	//glPointSize(10);
+
+	//GLfloat pos[] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.2f, 0.0f, 0.2f, 0, 0 };
+	//GLubyte col[] = { (byte) 0, (byte)0, (byte)255, 0, (byte)255, 0, (byte)255, 0, 0 };
+
+	DrawPointCloud(position, color, depth_height*depth_width);
 	
 	glutSwapBuffers();
+
+	delete[] position;
+	delete[] color;
+}
+
+void DrawPointCloud(GLfloat* position, GLubyte* color, int numPoints){
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_COLOR_ARRAY);
+
+	if (position != NULL && color != NULL)
+	{
+		glVertexPointer(3, GL_FLOAT, 0, position);
+		glColorPointer(3, GL_UNSIGNED_BYTE, 0, color);
+
+		glDrawArrays(GL_POINTS, 0, numPoints);
+	}
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
 }
